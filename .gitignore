@@ -1,0 +1,13 @@
+.mypy_cache
+.ropeproject
+.spyproject
+*.log
+*.log.*
+target_loan_prices.json
+response.html
+__pycache__
+.pytest_cache/
+build/
+jlbot.egg-info/
+tmp.py
+run_venv_development.sh

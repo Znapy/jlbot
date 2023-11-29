@@ -1,0 +1,46 @@
+[project]
+name = "jlbot"
+version = "2023.11"
+authors = [{name = "Alic Znapy", email = "AlicZnapy@gmail.com"},]
+license = {file = "LICENSE"}
+readme = "README.md"
+urls = {homepage = "https://github.com/Znapy/jlbot"}
+dependencies = [
+    "requests>=2.31",
+    "types-requests",
+    "Brotli>=1.0.9",
+    "tomli>=2.0.1 ; python_version < \"3.11\"",
+    "mypy>=1.4",
+    "pytest>=7.4",
+]
+requires-python = ">=3.10"
+
+[bot-settings]
+request_timeout = 125 # seconds of waiting for a response to a request
+post_delta = 1 # seconds between post requests
+step_reduce = 0.01 # fraction for price reduce, minimal 0.001 (=0.1%)
+headers.Accept = "application/json, text/plain, */*"
+headers.Accept-Encoding = "gzip, deflate, br"
+headers.Accept-Language = "en-US,en;q=0.5"
+headers.Content-Type = "application/json;charset=utf-8"
+headers.DNT = "1"
+headers.Host = "jetlend.ru"
+headers.Sec-Fetch-Dest = "empty"
+headers.Sec-Fetch-Mode = "cors"
+headers.Sec-Fetch-Site = "same-origin"
+headers.TE = "trailers"
+headers.User-Agent = "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/116.0"
+cookies = [
+    {name = "_gcl_au", value = "1.1.1400192426.1695244961", expires = 2023-12-19 21:22:41},
+    {name = "_jl_uid", value = "1234567890123456789012==", expires = 2024-08-23 07:27:48},
+    {name = "jl_features", value = "testFeature%3D10%25", expires = 2024-03-01 12:03:15},  # "%3D30%25" = "10%"
+    {name = "referrer", value = "direct", expires = 2023-12-12 08:03:35},
+]
+
+[tool.mypy]
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_unreachable = true
+disallow_untyped_defs = true
