@@ -9,6 +9,7 @@ Copyright 2023 Alic Znapy
 SPDX-License-Identifier: Apache-2.0
 """
 
+import argparse
 from sys import stdout as sys_stdout
 from typing import List, Dict, Set, Union, cast, Optional
 from json import (
@@ -61,7 +62,18 @@ class Settings:  # pylint: disable=too-few-public-methods
             result[str(cookie["name"])] = str(cookie["value"])
         return result
 
-    def __init__(self) -> None:
+    def _get_input_cookie(self, args: argparse.Namespace, cookie_name: str
+                          ) -> str:
+        """Get sessionid or csrftoken."""
+        if not (result := str(getattr(args, cookie_name))):
+            result = self.cookies.get(cookie_name, "")
+
+        if len(result) != 32:
+            raise ValueError(f"the '{cookie_name}' must be 32 characters long")
+
+        return result
+
+    def __init__(self, args: argparse.Namespace) -> None:
         with open(BASE_DIR / "pyproject.toml", "rb") as file:
             toml = tomllib.load(file)
 
@@ -71,30 +83,19 @@ class Settings:  # pylint: disable=too-few-public-methods
         self.step_reduce = toml["bot-settings"]["step_reduce"]
 
         self.headers = toml["bot-settings"].get("headers", {})
-        cookies = toml["bot-settings"].get("cookies", None)
-        self.cookies = self._clean_cookies(cookies)
+        self.cookies = self._clean_cookies(
+            toml["bot-settings"].get("cookies", None))
+
+        self.sessionid = self._get_input_cookie(args, "sessionid")
+        self.csrftoken = self._get_input_cookie(args, "csrftoken")
 
 
 class Engine:
     """Https requests to jetlend's API."""
 
     def __init__(self, settings: Settings):
-        self._sessionid = Engine._get_input_cookie(settings.cookies,
-                                                   "sessionid")
-        self._csrftoken = Engine._get_input_cookie(settings.cookies,
-                                                   "csrftoken")
         self.settings = settings
         self._prev_post = datetime.today() - settings.post_delta
-
-    @staticmethod
-    def _get_input_cookie(cookies: Dict[str, str], cookie_name: str) -> str:
-        """Get sessionid or csrftoken."""
-        val = cookies.get(cookie_name, None)
-        if val is None:
-            val = input(f"input {cookie_name}: ")
-        if len(val) != 32:
-            raise ValueError(f"the {cookie_name} must be 32 characters long")
-        return val
 
     @staticmethod
     def _get_section(name: str) -> Dict[str, Union[str, Template]]:
@@ -168,17 +169,15 @@ class Engine:
         if jet_path["name"] in ["loan_request_cancel", "loan_sell_preview",
                                 "loan_sell"]:
             result["Origin"] = "https://jetlend.ru"
-            result["X-CSRFToken"] = self._csrftoken
+            result["X-CSRFToken"] = self.settings.csrftoken
 
         return result
 
     def _cookies(self) -> Dict:
         """Cookies for request to jetlend.ru."""
-        result = {
-            'csrftoken': self._csrftoken,
-            'sessionid': self._sessionid
-        }
-        result.update(self.settings.cookies)
+        result = self.settings.cookies.copy()
+        result['csrftoken'] = self.settings.csrftoken
+        result['sessionid'] = self.settings.sessionid
         return result
 
     def _params_for_request(self, jet_path: JetPath) -> Dict:
@@ -435,10 +434,24 @@ def loginit() -> None:
                         datefmt='%Y%m%d_%H%M%S')
 
 
+def get_args() -> argparse.Namespace:
+    """Parse a bot parameters."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--sessionid",
+                        help="cookie 'sessionid'",
+                        default="")
+    parser.add_argument("-c", "--csrftoken",
+                        help="cookie 'csrftoken'",
+                        default="")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
     loginit()
 
-    commands = Commands(Engine(Settings()))
+    args = get_args()
+
+    commands = Commands(Engine(Settings(args)))
 
     target_loan_prices = commands.get_target_loan_prices()
     warning(f"number of targets: {len(target_loan_prices)}")
