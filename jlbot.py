@@ -16,7 +16,7 @@ from json import (
     dump as json_dump,
     load as json_load
 )
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from time import sleep
 from string import Template
 from logging import (
@@ -95,7 +95,10 @@ class Engine:
 
     def __init__(self, settings: Settings):
         self.settings = settings
-        self._prev_post = datetime.today() - settings.post_delta
+        self._prev_post = self._get_prev_post()
+
+    def _get_prev_post(self) -> datetime:
+        return datetime.now(timezone.utc) - self.settings.post_delta
 
     @staticmethod
     def _get_section(name: str) -> Dict[str, Union[str, Template]]:
@@ -132,7 +135,7 @@ class Engine:
             result["json"] = count_min_price
             result["path"] = Template("exchange/loans/${loan_id}/sell")
 
-        if result.get("path", None) is None:
+        if result.get("path") is None:
             raise ValueError(f"Unknown section {name}")
 
         # not used (all with GET):
@@ -189,7 +192,7 @@ class Engine:
             "url": self._full_url(jet_path),
             "timeout": self.settings.request_timeout
         }
-        if jet_path.get("json", None) is not None:
+        if jet_path.get("json") is not None:
             result["data"] = jet_path["json"]  # str without whitespaces
         return result
 
@@ -201,7 +204,7 @@ class Engine:
     def _post_delay(self, jet_path: JetPath) -> None:
         if jet_path["method"] != "POST":
             return
-        if self._prev_post > datetime.today() - self.settings.post_delta:
+        if self._prev_post > self._get_prev_post():
             sleep(1)
 
     @staticmethod
@@ -397,7 +400,7 @@ class Commands:
         """Send to JetLend new prices."""
         for target in targets:
 
-            exist_request = exist_requests.get(target["loan_id"], None)
+            exist_request = exist_requests.get(target["loan_id"])
             tasks = self._tasks_for_target(target, exist_request)
 
             if "do_cancel" in tasks:
@@ -419,37 +422,33 @@ class Commands:
                 self._send("loan_overview", {"loan_id": target["loan_id"]})
 
 
-def loginit() -> None:
-    """Initialize logging."""
-    console = logging_StreamHandler(sys_stdout)
-    logfile = logging_handlers.RotatingFileHandler(
-        BASE_DIR / "main.log", maxBytes=2_000_000, backupCount=5)
+def _main() -> None:
 
-    console.setLevel(logging_WARNING)
-    logfile.setLevel(logging_INFO)
+    def _loginit() -> None:
+        console = logging_StreamHandler(sys_stdout)
+        logfile = logging_handlers.RotatingFileHandler(
+            BASE_DIR / "main.log", maxBytes=2_000_000, backupCount=5)
 
-    logging_basicConfig(level=min(console.level, logfile.level),
-                        handlers=[console, logfile],
-                        format="%(asctime)s [%(levelname)s] %(message)s",
-                        datefmt='%Y%m%d_%H%M%S')
+        console.setLevel(logging_WARNING)
+        logfile.setLevel(logging_INFO)
 
+        logging_basicConfig(level=min(console.level, logfile.level),
+                            handlers=[console, logfile],
+                            format="%(asctime)s [%(levelname)s] %(message)s",
+                            datefmt='%Y%m%d_%H%M%S')
 
-def get_args() -> argparse.Namespace:
-    """Parse a bot parameters."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--sessionid",
-                        help="cookie 'sessionid'",
-                        default="")
-    parser.add_argument("-c", "--csrftoken",
-                        help="cookie 'csrftoken'",
-                        default="")
-    return parser.parse_args()
+    def _get_args() -> argparse.Namespace:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-s", "--sessionid",
+                            help="cookie 'sessionid'",
+                            default="")
+        parser.add_argument("-c", "--csrftoken",
+                            help="cookie 'csrftoken'",
+                            default="")
+        return parser.parse_args()
 
-
-if __name__ == "__main__":
-    loginit()
-
-    args = get_args()
+    _loginit()
+    args = _get_args()
 
     commands = Commands(Engine(Settings(args)))
 
@@ -466,3 +465,7 @@ if __name__ == "__main__":
     #   will be skipped at the next execute after verification
     commands.change_loans_price(target_loan_prices,
                                 current_exist_requests)
+
+
+if __name__ == "__main__":
+    _main()

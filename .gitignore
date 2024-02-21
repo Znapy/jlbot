@@ -1,6 +1,8 @@
+.venv
 .mypy_cache
 .ropeproject
 .spyproject
+.vscode
 *.log
 *.log.*
 target_loan_prices.json
@@ -10,4 +12,3 @@ __pycache__
 build/
 jlbot.egg-info/
 tmp.py
-run_venv_development.sh

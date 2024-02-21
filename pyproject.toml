@@ -1,19 +1,27 @@
 [project]
 name = "jlbot"
-version = "2023.11"
+version = "2024.02"
 authors = [{name = "Alic Znapy", email = "AlicZnapy@gmail.com"},]
 license = {file = "LICENSE"}
 readme = "README.md"
 urls = {homepage = "https://github.com/Znapy/jlbot"}
 dependencies = [
     "requests>=2.31",
-    "types-requests",
     "Brotli>=1.0.9",
     "tomli>=2.0.1 ; python_version < \"3.11\"",
-    "mypy>=1.4",
-    "pytest>=7.4",
 ]
 requires-python = ">=3.10"
+
+[project.optional-dependencies]
+# development dependency groups
+dev = [
+    "mypy>=1.4",
+    "types-requests",
+    "python-lsp-server[pycodestyle,pydocstyle,mccabe,pyflakes,rope,yapf,autopep8]>=1.10",
+    "pylsp-mypy>=0.6.8",
+    "spyder-kernels>=2.5",
+    "pytest>=7.4",
+]
 
 [bot-settings]
 request_timeout = 125 # seconds of waiting for a response to a request
